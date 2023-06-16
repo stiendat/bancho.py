@@ -409,3 +409,45 @@ alter table maps drop primary key;
 alter table maps add primary key (id);
 alter table maps modify column server enum('osu!', 'private') not null default 'osu!' after id;
 unlock tables;
+
+# used to limit register attempts
+create table users_invitation
+(
+    user_id     int         not null comment 'User ID for sorting',
+    time        timestamp   not null comment 'Create invite code time',
+    used_by     int         null comment 'ID user created using this code',
+    invite_code varchar(60) not null comment 'Invite code',
+    constraint users_invitation_users_id_fk
+        foreign key (user_id) references users (id),
+    constraint users_invitation_users_id_fk2
+        foreign key (used_by) references users (id)
+)
+    comment 'To store information about user invitations';
+
+create index users_invitation_user_id_time_index
+    on users_invitation (user_id asc, time desc);
+
+alter table users
+    add available_invite int default 5 null comment 'Number of invitations available';
+
+# This can be used in MySQL 5.X or MariaDB. No idea if this works in MySQL 8.X
+alter table users
+    add discord_id bigint(19) null comment 'Discord User ID';
+
+create table discord_verify
+(
+    discord_id bigint(19)                              not null comment 'User Discord ID',
+    time       timestamp default NOW()                 not null comment 'Timestamp request verify code',
+    verify_key char(16)  default LEFT(MD5(RAND()), 16) null comment 'Key that auto generated for verify purpose'
+)
+    comment 'Verify Discord account link';
+
+create unique index discord_verify_discord_id_uindex
+    on discord_verify (discord_id);
+
+alter table discord_verify
+    add constraint discord_verify_pk
+        primary key (discord_id);
+
+create unique index users_discord_id_uindex
+    on users (discord_id);

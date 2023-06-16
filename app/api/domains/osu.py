@@ -68,6 +68,7 @@ from app.repositories import maps as maps_repo
 from app.repositories import players as players_repo
 from app.repositories import scores as scores_repo
 from app.repositories import stats as stats_repo
+from app.repositories import invites as invites_repo
 from app.utils import escape_enum
 from app.utils import pymysql_encode
 
@@ -1836,6 +1837,7 @@ async def register_account(
     email: str = Form(..., alias="user[user_email]"),
     pw_plaintext: str = Form(..., alias="user[password]"),
     check: int = Form(...),
+    invite_code: Optional[str] = Form(..., alias="user[invite_code]"),
     #
     # TODO: allow nginx to be optional
     forwarded_ip: str = Header(..., alias="X-Forwarded-For"),
@@ -1891,6 +1893,16 @@ async def register_account(
     if pw_plaintext.lower() in app.settings.DISALLOWED_PASSWORDS:
         errors["password"].append("That password was deemed too simple.")
 
+    # Invite codes must:
+    # - be 16 characters in length
+    # - be alphanumeric
+    if invite_code:
+        if not regexes.INVITE_CODE.match(invite_code):
+            errors["invite_code"].append("Invalid invite code.")
+
+        if not await invites_repo.fetch(invite_code=invite_code):
+            errors["invite_code"].append("Invite code not found.")
+
     if errors:
         # we have errors to send back, send them back delimited by newlines.
         errors = {k: ["\n".join(v)] for k, v in errors.items()}
@@ -1901,6 +1913,10 @@ async def register_account(
         )
 
     if check == 0:
+        # check if server is in restrict register mode.
+        if app.settings.RESTRICT_REGISTRATION and invite_code is None:
+            return b"Registration is restricted to invite codes only."
+
         # the client isn't just checking values,
         # they want to register the account now.
         # make the md5 & bcrypt the md5 for sql.
@@ -1923,6 +1939,10 @@ async def register_account(
 
             # add to `stats` table.
             await stats_repo.create_all_modes(player_id=player["id"])
+
+        # link user to invite code if applicable.
+        if invite_code:
+            await invites_repo.set_code_used(invite_code, player["id"])
 
         if app.state.services.datadog:
             app.state.services.datadog.increment("bancho.registrations")

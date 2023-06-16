@@ -332,6 +332,9 @@ class Player:
         # packet queue
         self._queue = bytearray()
 
+        # discord id
+        self.discord = extras.get("discord_id", None)
+
     def __repr__(self) -> str:
         return f"<{self.name} ({self.id})>"
 

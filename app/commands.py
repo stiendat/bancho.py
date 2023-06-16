@@ -63,6 +63,7 @@ from app.objects.score import SubmissionStatus
 from app.repositories import clans as clans_repo
 from app.repositories import maps as maps_repo
 from app.repositories import players as players_repo
+from app.repositories import discord_verify as discord_repo
 from app.usecases.performance import ScoreParams
 from app.utils import seconds_readable
 
@@ -1208,6 +1209,44 @@ async def reload(ctx: Context) -> Optional[str]:
         return f"{exc.args[0]}."
 
     return f"Reloaded {mod.__name__}"
+
+
+@command(Privileges.DEVELOPER, hidden=True)
+async def restrictreg(ctx: Context) -> Optional[str]:
+    """Toggle whether new registrations are allowed."""
+    if len(ctx.args) != 1:
+        return "Invalid syntax: !restrictreg <on/off>"
+
+    if ctx.args[0] == "on":
+        app.settings.RESTRICT_REGISTRATION = True
+        return "Registration is now restricted."
+
+    if ctx.args[0] == "off":
+        app.settings.RESTRICT_REGISTRATION = False
+        return "Registration is now unrestricted."
+
+    return "Invalid syntax: !restrictreg <on/off>"
+
+
+@command(Privileges.UNRESTRICTED)
+async def linkdiscord(ctx: Context) -> Optional[str]:
+    """Link your account to your discord account."""
+    if len(ctx.args) != 1:
+        return "Invalid syntax: !linkdiscord <verify_key>"
+
+    key = ctx.args[0]
+    if not regexes.INVITE_CODE.match(key):
+        return "Invalid key."
+
+    db_key = await discord_repo.fetch(key)
+    if not db_key:
+        return "Verify key not found."
+    if db_key.get('used_by', None):
+        return "Verify key already used."
+
+    await discord_repo.update(key, ctx.player.id)
+    await players_repo.update(ctx.player.id, discord_id=db_key['discord_id'])
+    return "Successfully linked your account."
 
 
 @command(Privileges.UNRESTRICTED)

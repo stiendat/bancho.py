@@ -74,6 +74,7 @@ DISCORD_AUDIT_LOG_WEBHOOK = os.environ["DISCORD_AUDIT_LOG_WEBHOOK"]
 
 AUTOMATICALLY_REPORT_PROBLEMS = read_bool(os.environ["AUTOMATICALLY_REPORT_PROBLEMS"])
 
+RESTRICT_REGISTRATION = read_bool(os.environ["RESTRICT_REGISTRATION"])
 # advanced dev settings
 
 ## WARNING touch this once you've

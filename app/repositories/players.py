@@ -191,6 +191,7 @@ async def update(
     custom_badge_icon: Optional[str] = None,
     userpage_content: Optional[str] = None,
     api_key: Optional[str] = None,
+    discord_id: Optional[int] = None,
 ) -> Optional[dict[str, Any]]:
     """Update a player in the database."""
     query = """\
@@ -211,7 +212,8 @@ async def update(
                custom_badge_name = COALESCE(:custom_badge_name, custom_badge_name),
                custom_badge_icon = COALESCE(:custom_badge_icon, custom_badge_icon),
                userpage_content = COALESCE(:userpage_content, userpage_content),
-               api_key = COALESCE(:api_key, api_key)
+               api_key = COALESCE(:api_key, api_key),
+               discord_id = COALESCE(:discord_id, discord_id)
          WHERE id = :id
     """
     params = {
@@ -233,6 +235,7 @@ async def update(
         "custom_badge_icon": custom_badge_icon,
         "userpage_content": userpage_content,
         "api_key": api_key,
+        "discord_id": discord_id,
     }
     await app.state.services.database.execute(query, params)
 
